@@ -180,6 +180,56 @@ class LessonController extends Controller
         return response()->json(['ok' => true, 'bonus_xp' => $bonusXp, 'new_badges' => $newBadges]);
     }
 
+    public function progressSummary(Request $request)
+    {
+        $userId = $request->user()->id;
+
+        $stats = UserStats::firstOrCreate(
+            ['user_id' => $userId],
+            ['total_xp' => 0, 'current_streak' => 0, 'longest_streak' => 0, 'current_cefr_level' => 'A1']
+        );
+
+        $allLessons = Lesson::with('module')->get();
+        $lessonIds = $allLessons->pluck('id');
+        $progressMap = UserLessonProgress::query()
+            ->where('user_id', $userId)
+            ->whereIn('lesson_id', $lessonIds)
+            ->get()
+            ->keyBy('lesson_id');
+
+        $totalLessons = $allLessons->count();
+        $completedLessons = $progressMap->where('status', 'completed')->count();
+        $inProgressLessons = $progressMap->where('status', 'in_progress')->count();
+
+        $levels = [];
+        foreach (['A1', 'A2', 'B1', 'B2', 'C1', 'C2'] as $code) {
+            $levelLessons = $allLessons->filter(fn ($l) => $l->module->cefr_level === $code);
+            $levelTotal = $levelLessons->count();
+            $levelCompleted = $levelLessons->filter(
+                fn ($l) => ($progressMap[$l->id]?->status ?? '') === 'completed'
+            )->count();
+
+            $levels[] = [
+                'code' => $code,
+                'total_lessons' => $levelTotal,
+                'completed_lessons' => $levelCompleted,
+                'percentage' => $levelTotal > 0 ? round(($levelCompleted / $levelTotal) * 100) : 0,
+            ];
+        }
+
+        return response()->json([
+            'total_lessons' => $totalLessons,
+            'completed_lessons' => $completedLessons,
+            'in_progress_lessons' => $inProgressLessons,
+            'overall_percentage' => $totalLessons > 0 ? round(($completedLessons / $totalLessons) * 100) : 0,
+            'total_xp' => $stats->total_xp,
+            'current_streak' => $stats->current_streak,
+            'longest_streak' => $stats->longest_streak,
+            'current_level' => $stats->current_cefr_level,
+            'levels' => $levels,
+        ]);
+    }
+
     private function isUnlockedByPlacement(?string $moduleCefrLevel, ?string $placementLevel): bool
     {
         if ($placementLevel === null || $moduleCefrLevel === null) {

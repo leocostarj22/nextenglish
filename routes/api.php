@@ -29,6 +29,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/history/{turn}', [HistoryController::class, 'destroy']);
 
     Route::get('/lesson-stats', [LessonController::class, 'stats']);
+    Route::get('/lessons/progress', [LessonController::class, 'progressSummary']);
     Route::get('/lessons', [LessonController::class, 'index']);
     Route::get('/lessons/{lesson}', [LessonController::class, 'show']);
     Route::post('/lessons/{lesson}/start', [LessonController::class, 'start']);

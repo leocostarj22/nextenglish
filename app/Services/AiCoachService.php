@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
@@ -111,7 +112,6 @@ class AiCoachService
             ? [
                 'model' => $model,
                 'stream' => false,
-                'format' => 'json',
                 'options' => ['temperature' => 0.2],
                 'messages' => [
                     ['role' => 'system', 'content' => $system],
@@ -292,11 +292,16 @@ class AiCoachService
             ];
         }
 
+        $cacheKey = 'ai_q_' . md5(serialize([$scenario]));
+        $cached = Cache::get($cacheKey);
+        if ($cached !== null) {
+            return $cached;
+        }
+
         $payload = $isOllama
             ? [
                 'model' => $model,
                 'stream' => false,
-                'format' => 'json',
                 'options' => ['temperature' => 0.5],
                 'messages' => [
                     ['role' => 'system', 'content' => $system],
@@ -366,7 +371,7 @@ class AiCoachService
         $questions = array_values(array_filter($questions, fn ($q) => is_string($q) && trim($q) !== ''));
         $questions = array_slice($questions, 0, 5);
 
-        return [
+        $result = [
             'result' => ['questions' => $questions],
             'raw' => is_string($content) ? $content : null,
             'model' => data_get($json, 'model', $model),
@@ -374,6 +379,10 @@ class AiCoachService
             'tokens_out' => (int) ($isOllama ? (data_get($json, 'eval_count') ?? 0) : (data_get($json, 'usage.completion_tokens') ?? 0)),
             'latency_ms' => $latencyMs,
         ];
+
+        Cache::put($cacheKey, $result, 86400);
+
+        return $result;
     }
 
     private function extractJsonObject(string $text): array

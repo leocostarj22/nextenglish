@@ -10,6 +10,7 @@ class PracticeTurn extends Model
     protected $fillable = [
         'practice_session_id',
         'user_id',
+        'status',
         'scenario',
         'question',
         'generated_questions_id',
@@ -31,6 +32,7 @@ class PracticeTurn extends Model
         'tokens_in' => 'integer',
         'tokens_out' => 'integer',
         'latency_ms' => 'integer',
+        'status' => 'string',
     ];
 
     public function user(): BelongsTo
