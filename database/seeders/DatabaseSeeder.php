@@ -41,5 +41,9 @@ class DatabaseSeeder extends Seeder
                 'email' => 'test@example.com',
             ]);
         }
+
+        $this->call(LessonSeeder::class);
+        $this->call(PlacementTestSeeder::class);
+        $this->call(BadgeSeeder::class);
     }
 }
